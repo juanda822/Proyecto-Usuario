@@ -1,112 +1,90 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import UsersTable from "./UsersTable";
+import UserForm from "./UserForm";
+import logo from "../assets/pretoam.png";
 
-function UserList({ refresh }) {
+const pageWrap = {
+  padding: 20,
+  minHeight: "100vh",
+  background: "linear-gradient(180deg,#f4f8fb 0%, #ffffff 100%)",
+};
+
+const header = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 18,
+};
+
+const titleBox = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
+const logoMini = {
+  width: 56,
+  height: 56,
+  backgroundImage: `url(${logo})`,
+  backgroundSize: "cover",
+  backgroundRepeat: "no-repeat",
+  borderRadius: 8,
+  boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+};
+
+export default function UserList({ refresh }) {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
-  const [form, setForm] = useState({ nombre: "", email: "", telefono: "" });
+
+  const fetchUsers = () => {
+    axios
+      .get("http://localhost:5001/api/usuarios")
+      .then((res) => setUsers(res.data))
+      .catch((err) => console.error("Error al obtener usuarios:", err));
+  };
 
   useEffect(() => {
-    axios.get("http://localhost:5001/api/usuarios")
-      .then(res => setUsers(res.data))
-      .catch(err => console.error("Error al obtener usuarios:", err));
+    fetchUsers();
   }, [refresh]);
 
-  // 🔹 Eliminar usuario
   const handleDelete = (id) => {
-    if (window.confirm("¿Seguro que deseas eliminar este usuario?")) {
-      axios.delete("http://localhost:5001/api/usuarios/delete/${id}")
-        .then(() => {
-          setUsers(users.filter(u => u.id !== id));
-        })
-        .catch(err => console.error("Error al eliminar usuario:", err));
-    }
+    if (!window.confirm("¿Seguro que deseas eliminar este usuario?")) return;
+    axios
+      .delete(`http://localhost:5001/api/usuarios/delete/${id}`)
+      .then(() => setUsers((prev) => prev.filter((u) => u.id !== id)))
+      .catch((err) => console.error("Error al eliminar usuario:", err));
   };
 
-  // 🔹 Activar modo edición
-  const handleEdit = (user) => {
-    setEditingUser(user.id);
-    setForm({ nombre: user.nombre, email: user.email, telefono: user.telefono });
-  };
+  const handleEdit = (user) => setEditingUser(user);
 
-  // 🔹 Guardar cambios
-  const handleUpdate = (e) => {
-    e.preventDefault();
-    axios.put("http://localhost:5001/api/usuarios/update/${editingUser}, form")
+  const handleUpdate = (updatedUser) => {
+    axios
+      .put(`http://localhost:5001/api/usuarios/update/${updatedUser.id}`, updatedUser)
       .then(() => {
         setEditingUser(null);
-        setForm({ nombre: "", email: "", telefono: "" });
-        axios.get("http://localhost:5001/api/usuarios")
-          .then(res => setUsers(res.data));
+        fetchUsers();
       })
-      .catch(err => console.error("Error al actualizar usuario:", err));
+      .catch((err) => console.error("Error al actualizar usuario:", err));
   };
 
   return (
-    <div style={{ marginTop: "20px" }}>
-      <h3>Lista de Usuarios</h3>
-
-      {users.length === 0 ? (
-        <p>No hay usuarios registrados.</p>
-      ) : (
-        <table border="1" cellPadding="10" style={{ width: "100%", textAlign: "left" }}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Teléfono</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.nombre}</td>
-                <td>{u.email}</td>
-                <td>{u.telefono}</td>
-                <td>
-                  <button onClick={() => handleEdit(u)}>Editar</button>
-                  <button onClick={() => handleDelete(u.id)}>Eliminar</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {editingUser && (
-        <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc" }}>
-          <h3>Editar Usuario</h3>
-          <form onSubmit={handleUpdate}>
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              required
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Teléfono"
-              value={form.telefono}
-              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-            />
-            <button type="submit">Guardar cambios</button>
-            <button type="button" onClick={() => setEditingUser(null)}>Cancelar</button>
-          </form>
+    <div style={pageWrap}>
+      <div style={header}>
+        <div style={titleBox}>
+          <div style={logoMini} />
+          <div>
+            <h2 style={{ margin: 0 }}>PretoAm • Administración</h2>
+            <small style={{ color: "#556", fontSize: 13 }}>Base de datos de la petrolera — gestión de usuarios</small>
+          </div>
         </div>
-      )}
+      </div>
+
+
+
+      <UsersTable users={users} onEdit={handleEdit} onDelete={handleDelete} />
+
+      {editingUser && <UserForm user={editingUser} onUpdate={handleUpdate} onCancel={() => setEditingUser(null)} />}
     </div>
   );
 }
-
-export default UserList;
